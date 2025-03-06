@@ -23,5 +23,7 @@ RUN yarn install
 # Copy application code
 COPY . .
 
+RUN yarn tsc
+
 # Command to run the application
 CMD ["node", "/app/dist/index.js"]

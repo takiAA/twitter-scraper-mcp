@@ -11,8 +11,7 @@ services:
       # Twitter credentials from .env will be passed through
     env_file:
       - .env
-    ports:
-      - "3000:3000"  # Expose port 3000 for MCP SSE connection
+    # No need to expose ports for stdio transport
     volumes:
       - .:/app
       - /app/node_modules

@@ -28,13 +28,13 @@ async function initScraper() {
   scraper = new Scraper();
   
   try {
-    console.log('Attempting to login with credentials...');
+    //console.log('Attempting to login with credentials...');
     
     // Try basic authentication first
-    console.log('Using basic authentication');
-    console.log(`Username: ${process.env.TWITTER_USERNAME}`);
+    //console.log('Using basic authentication');
+    //console.log(`Username: ${process.env.TWITTER_USERNAME}`);
     // Don't log the actual password, just log that we're using it
-    console.log('Password: [REDACTED]');
+    //console.log('Password: [REDACTED]');
     
     try {
       await scraper.login(
@@ -52,7 +52,7 @@ async function initScraper() {
           process.env.TWITTER_ACCESS_TOKEN && 
           process.env.TWITTER_ACCESS_TOKEN_SECRET) {
         
-        console.log('Falling back to v2 API credentials');
+        //console.log('Falling back to v2 API credentials');
         
         // Login with v2 API credentials
         await scraper.login(
@@ -70,7 +70,7 @@ async function initScraper() {
       }
     }
     
-    console.log('Login successful');
+    //console.log('Login successful');
     return scraper;
   } catch (authError) {
     console.error('Authentication failed:', authError);
@@ -92,9 +92,9 @@ server.addTool({
       
       log.info("Fetching tweet...", { tweetId: args.tweetId });
       const tweet = await twitterScraper.getTweet(args.tweetId);
-      
+      log.info("result:",tweet.text);
       log.info("Tweet fetched successfully");
-      return JSON.stringify(tweet, null, 2);
+      return tweet.text;
     } catch (error) {
       log.error("Failed to get tweet", { error: error.message });
       throw new UserError(`Failed to get tweet: ${error.message}`);
@@ -116,9 +116,10 @@ server.addTool({
       
       log.info("Sending tweet...");
       const result = await twitterScraper.sendTweet(args.text);
-      
+      log.info("result:",await result.json());
       log.info("Tweet sent successfully");
-      return JSON.stringify(result, null, 2);
+      const resultJson = await result.json();
+      return resultJson;
     } catch (error) {
       log.error("Failed to send tweet", { error: error.message });
       throw new UserError(`Failed to send tweet: ${error.message}`);
@@ -128,11 +129,7 @@ server.addTool({
 
 // Start the server
 server.start({
-  transportType: "sse", // Use SSE for network interaction
-  sse: {
-    endpoint: "/sse",
-    port: 3000,
-  }
+  transportType: "stdio", // Use stdio for direct process communication
 });
 
-console.log("Twitter MCP server started on port 3000. Connect to http://localhost:3000/sse with MCP tools.");
+// log.info("Twitter MCP server started with stdio transport.");
