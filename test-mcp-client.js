@@ -25,6 +25,15 @@ async function main() {
     console.log('\nListing available tools:');
     const toolsResponse = await client.listTools();
     console.log(JSON.stringify(toolsResponse.tools, null, 2));
+    console.log('\nTesting getTweet tool:');
+    const tweetId = '1897009050392379653'; // Replace with a valid tweet ID
+    const getTweetResponse = await client.callTool({
+      name: 'getTweet',
+      arguments: {
+        tweetId,
+      },
+    });
+    console.log(JSON.stringify(getTweetResponse, null, 2));
 
     // Test getTweet tool (if you have a tweet ID)
     // Uncomment and replace with a valid tweet ID

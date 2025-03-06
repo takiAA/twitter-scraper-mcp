@@ -24,4 +24,4 @@ RUN yarn install
 COPY . .
 
 # Command to run the application
-CMD ["yarn", "dev"]
+CMD ["node", "/app/dist/index.js"]
