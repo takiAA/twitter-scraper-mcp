@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  twitter-client:
+    build: .
+    container_name: twitter-client
+    environment:
+      - HTTP_PROXY=http://host.docker.internal:7890
+      - HTTPS_PROXY=http://host.docker.internal:7890
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+      # Twitter credentials from .env will be passed through
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"  # Expose port 3000 for MCP SSE connection
+    volumes:
+      - .:/app
+      - /app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

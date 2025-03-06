@@ -1,0 +1,30 @@
+{
+  "name": "twitter-mcp-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node --esm index.ts",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "test:client": "node test-mcp-client.js"
+  },
+  "dependencies": {
+    "agent-twitter-client": "^0.0.18",
+    "axios": "^1.8.1",
+    "dotenv": "^16.4.7",
+    "fastmcp": "^1.20.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "@types/node": "^22.13.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}
