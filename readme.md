@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/takiaa-twitter-scraper-mcp-badge.jpg)](https://mseep.ai/app/takiaa-twitter-scraper-mcp)
+
 # Twitter MCP Server
 
 An MCP (Model Context Protocol) server that provides tools for interacting with Twitter using the agent-twitter-client library.
