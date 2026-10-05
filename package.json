@@ -36,7 +36,7 @@
     "https-proxy-agent": "^7.0.6",
     "twitter-api-v2": "^1.29.1",
     "undici": "^7.29.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@steipete/sweet-cookie": "0.4.4",
