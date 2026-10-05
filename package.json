@@ -40,11 +40,11 @@
   },
   "devDependencies": {
     "@steipete/sweet-cookie": "0.4.4",
-    "@types/node": "^22.13.9",
+    "@types/node": "^26.6.4",
     "nock": "^14.0.17",
     "prettier": "^3.9.9",
     "tsx": "^4.20.0",
-    "typescript": "^5.8.2"
+    "typescript": "^7.0.2"
   },
   "repository": {
     "type": "git",
