@@ -25,7 +25,9 @@
     "auth:import": "node scripts/python.js import",
     "test:python": "node scripts/python.js test",
     "test:session": "npm run build && node scripts/live-session-smoke.mjs",
-    "auth:browser": "node scripts/auth-browser.js"
+    "auth:browser": "node scripts/auth-browser.js",
+    "publication:check": "node scripts/publication-check.js",
+    "security:scan": "gitleaks git --redact=100 --no-banner --config .gitleaks.toml --log-opts=--all"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
@@ -43,5 +45,32 @@
     "prettier": "^3.9.9",
     "tsx": "^4.20.0",
     "typescript": "^5.8.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takiAA/twitter-scraper-mcp.git"
+  },
+  "homepage": "https://github.com/takiAA/twitter-scraper-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/takiAA/twitter-scraper-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agents",
+    "twitter",
+    "x",
+    "twscrape"
+  ],
+  "files": [
+    "dist",
+    "python/worker.py",
+    "python/session_writer.py",
+    "scripts/import-session.py",
+    "requirements.txt",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "DISCLAIMER.md"
+  ]
 }

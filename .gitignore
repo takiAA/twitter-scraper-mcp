@@ -10,3 +10,26 @@ cookies*.json
 __pycache__/
 *.db
 *.db-*
+
+# Session exports, local profiles and private keys
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.sqlite3-*
+*.pyc
+*.pyo
+*cookie*.json
+*cookie*.txt
+*.har
+*.pem
+*.key
+*.p12
+*.pfx
+/playwright/.auth/
+/browser-profile/
+
+.npmrc
+Cookies
+Cookies-*
+*storage-state*.json
+*storage_state*.json
