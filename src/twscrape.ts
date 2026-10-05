@@ -121,6 +121,8 @@ export function createScrapeTransport(config: Config): ScrapeTransport {
             params,
             db,
             timeoutMs: config.timeoutMs,
+            writeEnabled: config.enableWrite,
+            writeAccount: config.writeAccount,
             ...(config.proxyUrl ? { proxy: config.proxyUrl } : {}),
           }),
         );

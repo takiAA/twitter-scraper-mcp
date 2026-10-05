@@ -66,8 +66,8 @@ test('session reads route to twscrape and preserve rich fields over real MCP', a
     await server.connect(a);
     await client.connect(b);
     const tools = (await client.listTools()).tools;
-    assert.equal(tools.length, 26);
-    for (const t of tools.filter((t) => t.name !== 'sendTweet'))
+    assert.equal(tools.length, 27);
+    for (const t of tools.filter((t) => !['sendTweet', 'deleteTweet'].includes(t.name)))
       assert.equal(t.annotations.readOnlyHint, true);
     for (const request of [
       { name: 'getTweet', arguments: { tweetId: post.id } },

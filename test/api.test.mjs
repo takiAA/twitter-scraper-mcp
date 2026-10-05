@@ -55,6 +55,26 @@ test('real SDK supports bearer-token reads with expansions', async () => {
     await service.close();
   }
 });
+test('official deletion makes one DELETE and reports ambiguity without retry', async () => {
+  for (const [status, body, expected] of [
+    [200, { data: { deleted: true } }, 'deleted'],
+    [503, {}, 'DELETE_OUTCOME_UNKNOWN'],
+    [200, { data: { deleted: false } }, 'DELETE_OUTCOME_UNKNOWN'],
+  ]) {
+    nock('https://api.x.com').delete('/2/tweets/123').reply(status, body);
+    const service = create(credentials);
+    try {
+      if (expected === 'deleted') assert.equal((await service.deleteTweet('123')).status, expected);
+      else
+        await assert.rejects(
+          () => service.deleteTweet('123'),
+          (e) => e.code === expected,
+        );
+    } finally {
+      await service.close();
+    }
+  }
+});
 test('SDK authentication and rate-limit failures map to tool errors', async () => {
   for (const [status, code] of [
     [401, 'AUTH_FAILED'],

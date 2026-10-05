@@ -1,4 +1,4 @@
-"""Bounded JSON bridge for session reads."""
+"""Bounded JSON bridge. Writes use a separate adapter with no mutation retries."""
 
 import asyncio
 import json
@@ -226,6 +226,13 @@ async def dispatch(api, op, p):
 
 
 async def run(request):
+    if request["operation"] in ("sendTweet", "deleteTweet"):
+        from session_writer import write, WriteError
+
+        try:
+            return await write(request)
+        except WriteError as e:
+            raise ProviderError(e.code, e.message)
     from twscrape import API
     from twscrape.accounts_pool import NoAccountError
     from twscrape.logger import logger

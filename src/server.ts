@@ -46,7 +46,7 @@ const readAnnotations = {
 export function createServer(
   service: Pick<
     TwitterService,
-    'getTweet' | 'sendTweet' | 'searchTweets' | 'getUserTweets' | 'scrape'
+    'getTweet' | 'sendTweet' | 'deleteTweet' | 'searchTweets' | 'getUserTweets' | 'scrape'
   >,
 ) {
   const server = new McpServer({ name: 'twitter-mcp-server', version: '1.1.0' });
@@ -106,14 +106,15 @@ export function createServer(
     'sendTweet',
     {
       description:
-        'Publish a tweet through the explicitly configured official API. Disabled unless TWITTER_ENABLE_WRITE=true. Requires user authorization before calling. If publication outcome is unknown, check the account before retrying.',
+        'Publish a tweet through the explicitly configured API or named local session. Disabled unless TWITTER_ENABLE_WRITE=true. Requires user authorization before calling. If publication outcome is unknown, check the account before retrying.',
       inputSchema: { text: z.string().min(1).max(25000) },
       outputSchema: {
         id: z.string(),
         text: z.string(),
         url: z.string().url(),
         status: z.literal('published'),
-        source: z.literal('x-api'),
+        source: z.enum(['x-api', 'x-session']),
+        account: z.string().optional(),
       },
       annotations: {
         readOnlyHint: false,
@@ -160,6 +161,27 @@ export function createServer(
     partial: z.boolean().optional(),
   };
   const singleDataTools = new Set(['getUser', 'getUserById', 'getUserAbout', 'getCommunity']);
+  server.registerTool(
+    'deleteTweet',
+    {
+      description:
+        'Delete an owned tweet by ID or URL using the configured write account. Requires explicit user authorization. Disabled unless TWITTER_ENABLE_WRITE=true. Unknown outcomes must be checked before retrying.',
+      inputSchema: { tweetId: z.string().min(1).max(2048) },
+      outputSchema: {
+        id: z.string(),
+        status: z.literal('deleted'),
+        source: z.enum(['x-api', 'x-session']),
+        account: z.string().optional(),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
+    },
+    ({ tweetId }) => execute(() => service.deleteTweet(tweetId)),
+  );
   for (const tool of scrapeTools) {
     server.registerTool(
       tool.name,

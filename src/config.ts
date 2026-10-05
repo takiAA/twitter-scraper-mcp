@@ -1,6 +1,8 @@
 export interface Config {
   readBackend: 'oembed' | 'api' | 'twscrape';
   discoveryBackend: 'twscrape' | 'api';
+  writeBackend: 'api' | 'session';
+  writeAccount?: string;
   pythonPath?: string;
   accountsDb?: string;
   scrapeHttpBackend: 'httpx' | 'curl';
@@ -23,6 +25,9 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   if (!['twscrape', 'api'].includes(discoveryBackend))
     throw new Error('TWITTER_DISCOVERY_BACKEND must be twscrape or api');
   const scrapeHttpBackend = env.TWSCRAPE_HTTP_BACKEND || 'httpx';
+  const writeBackend = env.TWITTER_WRITE_BACKEND || 'api';
+  if (!['api', 'session'].includes(writeBackend))
+    throw new Error('TWITTER_WRITE_BACKEND must be api or session');
   if (!['httpx', 'curl'].includes(scrapeHttpBackend))
     throw new Error('TWSCRAPE_HTTP_BACKEND must be httpx or curl');
   if (env.TWITTER_ENABLE_WRITE && !['true', 'false'].includes(env.TWITTER_ENABLE_WRITE)) {
@@ -45,6 +50,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   return {
     readBackend: readBackend as Config['readBackend'],
     discoveryBackend: discoveryBackend as Config['discoveryBackend'],
+    writeBackend: writeBackend as Config['writeBackend'],
+    writeAccount: value('TWITTER_WRITE_ACCOUNT'),
     pythonPath: value('TWSCRAPE_PYTHON'),
     accountsDb: value('TWSCRAPE_ACCOUNTS_DB'),
     scrapeHttpBackend: scrapeHttpBackend as Config['scrapeHttpBackend'],

@@ -181,6 +181,7 @@ export interface ApiTransport {
   user(username: string): Promise<unknown>;
   userTweets(id: string, options: UserTweetsOptions): Promise<unknown>;
   post(text: string): Promise<unknown>;
+  delete(id: string): Promise<unknown>;
   close(): void;
 }
 export type ApiFactory = (config: Config, writing: boolean) => ApiTransport;
@@ -259,6 +260,11 @@ export const createApiTransport: ApiFactory = (config, writing) => {
         { text },
         { timeout: config.timeoutMs, prefix: '' },
       ),
+    delete: (id) =>
+      client.v2.delete(`https://api.x.com/2/tweets/${id}`, undefined, {
+        timeout: config.timeoutMs,
+        prefix: '',
+      }),
     close: () => agent?.destroy(),
   };
 };
@@ -342,6 +348,41 @@ export function createTwitterService(
   const scrape = (operation: string, params: Record<string, unknown>) => {
     scraper ??= (dependencies.createScrape || createScrapeTransport)(config);
     return scraper.read(operation, params);
+  };
+  const sessionWrite = async (
+    operation: 'sendTweet' | 'deleteTweet',
+    params: Record<string, unknown>,
+  ) => {
+    if (!config.writeAccount)
+      throw new TwitterError(
+        'AUTH_REQUIRED',
+        'Set TWITTER_WRITE_ACCOUNT to an exact local account label before writing.',
+      );
+    try {
+      const data = await scrape(operation, params);
+      const valid = z
+        .object({
+          id: z.string().regex(/^[1-9]\d{0,19}$/),
+          status: z.literal(operation === 'sendTweet' ? 'published' : 'deleted'),
+          source: z.literal('x-session'),
+          account: z.literal(config.writeAccount),
+          ...(operation === 'sendTweet' ? { text: z.string(), url: z.string().url() } : {}),
+        })
+        .safeParse(data);
+      if (!valid.success || (operation === 'deleteTweet' && data.id !== params.tweetId))
+        throw new TwitterError('UPSTREAM_FORMAT', 'Invalid session write response.');
+      return data;
+    } catch (error) {
+      if (
+        error instanceof TwitterError &&
+        !['REQUEST_TIMEOUT', 'UPSTREAM_ERROR', 'UPSTREAM_FORMAT'].includes(error.code)
+      )
+        throw error;
+      throw new TwitterError(
+        operation === 'sendTweet' ? 'PUBLISH_OUTCOME_UNKNOWN' : 'DELETE_OUTCOME_UNKNOWN',
+        'Write could not be confirmed. Check the account before retrying; no automatic retry was made.',
+      );
+    }
   };
   return {
     async getTweet(input: string): Promise<Record<string, unknown>> {
@@ -461,6 +502,7 @@ export function createTwitterService(
           'WRITE_DISABLED',
           'Publishing is disabled. Set TWITTER_ENABLE_WRITE=true only for an account you intend to publish from.',
         );
+      if (config.writeBackend === 'session') return sessionWrite('sendTweet', { text });
       // Construct/authenticate before issuing a write. Missing credentials cannot
       // fall back to a different account or provider after an attempted publish.
       writeApi ??= factory(config, true);
@@ -476,6 +518,31 @@ export function createTwitterService(
         };
       } catch (error) {
         throw translateError(error, true);
+      }
+    },
+    async deleteTweet(input: string): Promise<Record<string, unknown>> {
+      const id = normalizeTweetId(input);
+      if (!config.enableWrite)
+        throw new TwitterError(
+          'WRITE_DISABLED',
+          'Deletion is disabled. Set TWITTER_ENABLE_WRITE=true only when intentionally modifying your account.',
+        );
+      if (config.writeBackend === 'session') return sessionWrite('deleteTweet', { tweetId: id });
+      writeApi ??= factory(config, true);
+      try {
+        const response = z
+          .object({ data: z.object({ deleted: z.literal(true) }) })
+          .safeParse(await writeApi.delete(id));
+        if (!response.success) throw unknownPublication();
+        return { id, status: 'deleted', source: 'x-api' };
+      } catch (error) {
+        const translated = translateError(error, true);
+        if (translated.code === 'PUBLISH_OUTCOME_UNKNOWN')
+          throw new TwitterError(
+            'DELETE_OUTCOME_UNKNOWN',
+            'Deletion could not be confirmed. Check the post before retrying; no automatic retry was made.',
+          );
+        throw translated;
       }
     },
     async close() {
