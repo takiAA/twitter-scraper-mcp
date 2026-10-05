@@ -1,29 +1,25 @@
-FROM node:20-slim
+FROM node:24-bookworm-slim AS base
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+FROM base AS build
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY requirements.txt ./
+RUN python3 -m venv /opt/twscrape && /opt/twscrape/bin/pip install --no-cache-dir -r requirements.txt
+COPY tsconfig.json index.ts ./
+COPY src ./src
+RUN npm run build && npm prune --omit=dev --ignore-scripts
 
-# Install global proxy tools
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy package files
-COPY package.json yarn.lock ./
-
-# Set proxy environment variables globally
-ENV HTTP_PROXY=http://host.docker.internal:7890
-ENV HTTPS_PROXY=http://host.docker.internal:7890
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-
-# Install dependencies
-RUN yarn install
-
-# Copy application code
-COPY . .
-
-RUN yarn tsc
-
-# Command to run the application
-CMD ["node", "/app/dist/index.js"]
+FROM base AS runtime
+ENV NODE_ENV=production PYTHONDONTWRITEBYTECODE=1 TWS_TELEMETRY=0 TWSCRAPE_PYTHON=/opt/twscrape/bin/python TWSCRAPE_ACCOUNTS_DB=/data/accounts.db
+WORKDIR /app
+COPY --from=build --chown=node:node /app/package.json ./
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build /opt/twscrape /opt/twscrape
+COPY --chown=node:node python ./python
+COPY --chown=node:node scripts/import-session.py ./scripts/import-session.py
+RUN mkdir /data && chown node:node /data && chmod 700 /data
+USER node
+ENTRYPOINT ["node", "/app/dist/index.js"]

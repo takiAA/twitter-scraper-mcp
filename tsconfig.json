@@ -4,6 +4,10 @@
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "esModuleInterop": true,
-    "outDir": "dist"
-  }
+    "outDir": "dist",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "include": ["index.ts", "src/**/*.ts"]
 }

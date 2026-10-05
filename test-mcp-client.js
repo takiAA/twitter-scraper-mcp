@@ -1,74 +1,60 @@
 #!/usr/bin/env node
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { fileURLToPath } from 'node:url';
 
-async function main() {
-  // Create a new MCP client
-  const client = new Client(
-    {
-      name: 'twitter-mcp-test-client',
-      version: '1.0.0',
-    },
-    {
-      capabilities: {},
-    }
+const args = process.argv.slice(2);
+if (
+  args.length &&
+  (args.length !== 2 || !['--tweet', '--search', '--user'].includes(args[0]) || !args[1])
+) {
+  console.error(
+    'Usage: node test-mcp-client.js [--tweet ID_OR_URL | --search QUERY | --user USERNAME]',
   );
-
+  process.exitCode = 1;
+} else {
+  const client = new Client({ name: 'twitter-mcp-smoke-test', version: '1.1.0' });
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([, value]) => value !== undefined),
+  );
+  // Publishing is always disabled. --tweet is public; --search/--user use the configured discovery backend (twscrape by default).
+  env.TWITTER_ENABLE_WRITE = 'false';
+  env.TWITTER_READ_BACKEND = 'oembed';
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: [fileURLToPath(new URL('./dist/index.js', import.meta.url))],
+    env,
+    stderr: 'inherit',
+  });
   try {
-    // Connect to the MCP server
-    console.log('Connecting to MCP server...');
-    const transport = new SSEClientTransport(new URL('http://localhost:3000/sse'));
-    await client.connect(transport);
-    console.log('Connected to MCP server successfully!');
-
-    // List available tools
-    console.log('\nListing available tools:');
-    const toolsResponse = await client.listTools();
-    console.log(JSON.stringify(toolsResponse.tools, null, 2));
-    console.log('\nTesting getTweet tool:');
-    const tweetId = '1897009050392379653'; // Replace with a valid tweet ID
-    const getTweetResponse = await client.callTool({
-      name: 'getTweet',
-      arguments: {
-        tweetId,
-      },
-    });
-    console.log(JSON.stringify(getTweetResponse, null, 2));
-
-    // Test getTweet tool (if you have a tweet ID)
-    // Uncomment and replace with a valid tweet ID
-    /*
-    console.log('\nTesting getTweet tool:');
-    const tweetId = '1734609533274853865'; // Replace with a valid tweet ID
-    const getTweetResponse = await client.callTool({
-      name: 'getTweet',
-      arguments: {
-        tweetId,
-      },
-    });
-    console.log(JSON.stringify(getTweetResponse, null, 2));
-    */
-
-    // Test sendTweet tool (be careful, this will post to your Twitter account)
-    // Uncomment if you want to test sending a tweet
-    /*
-    console.log('\nTesting sendTweet tool:');
-    const sendTweetResponse = await client.callTool({
-      name: 'sendTweet',
-      arguments: {
-        text: 'Test tweet from MCP client ' + new Date().toISOString(),
-      },
-    });
-    console.log(JSON.stringify(sendTweetResponse, null, 2));
-    */
-
-    console.log('\nTests completed successfully!');
+    await client.connect(transport, { timeout: 10000 });
+    console.log(
+      JSON.stringify(
+        {
+          server: client.getServerVersion(),
+          tools: (await client.listTools()).tools.map((tool) => tool.name),
+        },
+        null,
+        2,
+      ),
+    );
+    if (args.length) {
+      const request =
+        args[0] === '--search'
+          ? { name: 'searchTweets', arguments: { query: args[1] } }
+          : args[0] === '--user'
+            ? { name: 'getUserTweets', arguments: { username: args[1] } }
+            : { name: 'getTweet', arguments: { tweetId: args[1] } };
+      const result = await client.callTool(request, undefined, {
+        timeout: args[0] === '--user' ? 250000 : 130000,
+      });
+      console.log(JSON.stringify(result, null, 2));
+      if (result.isError) process.exitCode = 1;
+    }
   } catch (error) {
-    console.error('Error:', error);
+    console.error(error instanceof Error ? error.message : 'MCP connection failed');
+    process.exitCode = 1;
   } finally {
-    // Close the client connection
     await client.close();
   }
 }
-
-main().catch(console.error);

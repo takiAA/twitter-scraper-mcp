@@ -1,0 +1,11 @@
+title = "Twitter MCP secret detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "x-session-cookie"
+description = "X reusable session cookie value"
+regex = '''(?i)\b(?:auth_token|ct0)\b["']?\s*[:=]\s*["']?([a-f0-9]{32,256})\b'''
+secretGroup = 1
+keywords = ["auth_token", "ct0"]

@@ -1,135 +1,40 @@
 #!/usr/bin/env node
-import { FastMCP, UserError } from "fastmcp";
-import { Scraper } from 'agent-twitter-client';
 import dotenv from 'dotenv';
-import { z } from "zod";
+import { fileURLToPath } from 'node:url';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { loadConfig } from './src/config.js';
+import { createNetwork } from './src/network.js';
+import { createTwitterService } from './src/twitter.js';
+import { createServer } from './src/server.js';
 
-// Load environment variables from .env file
-dotenv.config();
+// Both source (tsx) and compiled entrypoints resolve .env from the project root.
+const envFile = new URL(import.meta.url.endsWith('.ts') ? '.env' : '../.env', import.meta.url);
+dotenv.config({ path: fileURLToPath(envFile) });
 
-// Create a new FastMCP server
-const server = new FastMCP({
-  name: "twitter-mcp-server",
-  version: "1.0.0",
-});
-
-// Global scraper instance
-let scraper: Scraper | null = null;
-
-// Initialize and authenticate the scraper
-async function initScraper() {
-  if (scraper) return scraper;
-
-  // Check for required environment variables
-  if (!process.env.TWITTER_USERNAME || !process.env.TWITTER_PASSWORD) {
-    throw new UserError('Missing required environment variables: TWITTER_USERNAME and TWITTER_PASSWORD must be set');
+try {
+  const config = loadConfig(process.env);
+  const network = createNetwork(config);
+  const service = createTwitterService(config, { fetch: network.fetch });
+  const server = createServer(service);
+  let closing = false;
+  async function shutdown() {
+    if (closing) return;
+    closing = true;
+    await server.close();
+    await service.close();
+    await network.close();
   }
-
-  scraper = new Scraper();
-  
-  try {
-    //console.log('Attempting to login with credentials...');
-    
-    // Try basic authentication first
-    //console.log('Using basic authentication');
-    //console.log(`Username: ${process.env.TWITTER_USERNAME}`);
-    // Don't log the actual password, just log that we're using it
-    //console.log('Password: [REDACTED]');
-    
-    try {
-      await scraper.login(
-        process.env.TWITTER_USERNAME, 
-        process.env.TWITTER_PASSWORD,
-        process.env.TWITTER_EMAIL,
-        process.env.TWITTER_2FA_SECRET
-      );
-    } catch (basicAuthError) {
-      console.error('Basic authentication failed:', basicAuthError);
-      
-      // If basic auth fails and we have v2 credentials, try that
-      if (process.env.TWITTER_API_KEY && 
-          process.env.TWITTER_API_SECRET_KEY && 
-          process.env.TWITTER_ACCESS_TOKEN && 
-          process.env.TWITTER_ACCESS_TOKEN_SECRET) {
-        
-        //console.log('Falling back to v2 API credentials');
-        
-        // Login with v2 API credentials
-        await scraper.login(
-          process.env.TWITTER_USERNAME,
-          process.env.TWITTER_PASSWORD,
-          process.env.TWITTER_EMAIL || undefined,
-          process.env.TWITTER_API_KEY,
-          process.env.TWITTER_API_SECRET_KEY,
-          process.env.TWITTER_ACCESS_TOKEN,
-          process.env.TWITTER_ACCESS_TOKEN_SECRET
-        );
-      } else {
-        // If we don't have v2 credentials, rethrow the error
-        throw new UserError(`Authentication failed: ${basicAuthError.message}`);
-      }
-    }
-    
-    //console.log('Login successful');
-    return scraper;
-  } catch (authError) {
-    console.error('Authentication failed:', authError);
-    throw new UserError(`Authentication failed: ${authError.message}`);
-  }
+  process.once('SIGINT', () => {
+    void shutdown();
+  });
+  process.once('SIGTERM', () => {
+    void shutdown();
+  });
+  process.stdin.once('end', () => {
+    void shutdown();
+  });
+  await server.connect(new StdioServerTransport());
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'Server startup failed');
+  process.exitCode = 1;
 }
-
-// Add getTweet tool
-server.addTool({
-  name: "getTweet",
-  description: "Get a tweet by its ID",
-  parameters: z.object({
-    tweetId: z.string().describe("The ID of the tweet to retrieve"),
-  }),
-  execute: async (args, { log }) => {
-    try {
-      log.info("Initializing Twitter scraper...");
-      const twitterScraper = await initScraper();
-      
-      log.info("Fetching tweet...", { tweetId: args.tweetId });
-      const tweet = await twitterScraper.getTweet(args.tweetId);
-      log.info("result:",tweet.text);
-      log.info("Tweet fetched successfully");
-      return tweet.text;
-    } catch (error) {
-      log.error("Failed to get tweet", { error: error.message });
-      throw new UserError(`Failed to get tweet: ${error.message}`);
-    }
-  },
-});
-
-// Add sendTweet tool
-server.addTool({
-  name: "sendTweet",
-  description: "Send a new tweet",
-  parameters: z.object({
-    text: z.string().describe("The text content of the tweet to send"),
-  }),
-  execute: async (args, { log }) => {
-    try {
-      log.info("Initializing Twitter scraper...");
-      const twitterScraper = await initScraper();
-      
-      log.info("Sending tweet...");
-      const result = await twitterScraper.sendTweet(args.text);
-      log.info("result:",await result.json());
-      log.info("Tweet sent successfully");
-      const resultJson = await result.json();
-      return resultJson;
-    } catch (error) {
-      log.error("Failed to send tweet", { error: error.message });
-      throw new UserError(`Failed to send tweet: ${error.message}`);
-    }
-  },
-});
-
-// Start the server
-server.start({
-  transportType: "stdio", // Use stdio for direct process communication
-});
-
-// log.info("Twitter MCP server started with stdio transport.");
