@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible problem with sanitized evidence.
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: Do not paste cookies, tokens, private responses or credential screenshots. Read SECURITY.md for sensitive reports. Tool registration is not evidence of live endpoint availability.
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include the affected tool/provider and a reproducible public example if appropriate.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Commit/version, OS, Node, Python, twscrape version and local/Docker runtime. Do not include personal paths or session values.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Error code, minimal redacted output and checks actually performed. Check logs before pasting.
+    validations:
+      required: true

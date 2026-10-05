@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="388" viewBox="0 0 1120 388" role="img" aria-labelledby="title desc">
+  <title id="title">Manual X cookie import — illustrative DevTools layout</title>
+  <desc id="desc">Select Application, Cookies, https://x.com, then copy auth_token and ct0 values separately into local hidden input. All shown values are placeholders.</desc>
+  <rect width="1120" height="388" rx="16" fill="#0d1725"/>
+  <g font-family="Arial, sans-serif">
+    <text x="28" y="37" fill="#dce9f7" font-size="18" font-weight="700">Manual import / Illustrative layout — no real browser data</text>
+    <rect x="28" y="58" width="1064" height="278" rx="9" fill="#152334" stroke="#3a5066"/>
+    <path d="M28 106h1064M270 106v230" stroke="#3a5066"/>
+    <text x="48" y="88" fill="#8da5bd" font-size="14">Elements</text><text x="150" y="88" fill="#8da5bd" font-size="14">Console</text>
+    <rect x="241" y="67" width="144" height="32" rx="5" fill="#244238"/>
+    <text x="256" y="88" fill="#b1f1da" font-size="14" font-weight="700">1. Application</text>
+    <text x="48" y="141" fill="#8da5bd" font-size="14">Storage</text>
+    <text x="48" y="172" fill="#dce9f7" font-size="14" font-weight="700">2. Cookies</text>
+    <rect x="40" y="187" width="212" height="34" rx="5" fill="#263f56"/>
+    <text x="54" y="209" fill="#eaf2ff" font-size="14">3. https://x.com</text>
+    <text x="296" y="139" fill="#8da5bd" font-size="13">Name</text><text x="486" y="139" fill="#8da5bd" font-size="13">Value — never share or screenshot</text><text x="910" y="139" fill="#8da5bd" font-size="13">Domain</text>
+    <path d="M288 152h786M288 200h786M288 248h786" stroke="#33495e"/>
+    <text x="296" y="182" fill="#98e8cc" font-family="monospace" font-size="16">auth_token</text><text x="486" y="182" fill="#b5c6d6" font-family="monospace" font-size="14">[copy your value locally]</text><text x="910" y="182" fill="#b5c6d6" font-size="14">.x.com</text>
+    <text x="296" y="230" fill="#98e8cc" font-family="monospace" font-size="16">ct0</text><text x="486" y="230" fill="#b5c6d6" font-family="monospace" font-size="14">[copy your value locally]</text><text x="910" y="230" fill="#b5c6d6" font-size="14">.x.com</text>
+    <text x="296" y="294" fill="#c9d8e7" font-size="15">4. npm run auth:import → paste into each hidden prompt</text>
+    <text x="28" y="366" fill="#8fa8be" font-size="13">Keep both values from the same signed-in account. Do not edit/delete cookies. Import does not enable posting.</text>
+  </g>
+</svg>

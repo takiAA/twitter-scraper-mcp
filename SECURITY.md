@@ -1,0 +1,13 @@
+# Security
+
+The default configuration permits public reads and disables publishing/deletion. Local MCP clients with write mode and credentials can act as the configured account: enable this only for trusted clients, and require user authorization for every specific publish/delete action. Tool annotations are advisory, not an authorization boundary.
+
+X session cookies are stored in the local twscrape SQLite database, which contains reusable account credentials. The default `.local` directory and database files are ignored. Do not pass cookies through MCP tool parameters. Manual import uses hidden local input. Explicit `auth:browser` invocation reads only the selected browser/profile and x.com auth_token/ct0, with no network request or extraction on MCP startup. Values pass to Python through stdin, not argv, environment variables or an intermediate export. Browser import requires `--replace` for an existing label; both import paths preserve cooldown locks. OS decryption permissions remain under user control. The upstream helper may create temporary database snapshots for SQLite reads; the wrapper does not create a plaintext cookie export. The browser helper is a development dependency excluded from production runtime dependencies; browser extraction requires the user's authorization. twscrape telemetry is disabled; worker logs and account records are not returned to the model.
+
+Official API credentials belong in the process environment or a local untracked `.env`. Never commit credentials, cookie exports or API response dumps containing private data. Docker excludes environment and cookie files; provide secrets at runtime. Do not disable TLS verification.
+
+Tweet text is untrusted external content and can contain prompt injection. Consumers must treat it as source material, not instructions. Input URLs are normalized to IDs and only fixed X endpoints are contacted. Embeds are parsed as text; scripts are not executed.
+
+Publishing errors can be ambiguous. `PUBLISH_OUTCOME_UNKNOWN` / `DELETE_OUTCOME_UNKNOWN` mean to inspect the account/post before retrying. Session writes require an exact local account label, use a separate HTTP adapter with no mutation retries/redirects, and never rotate accounts. Read retry policies must not be reused for writes. There is no cross-process idempotency store.
+
+For sensitive reports, use GitHub's private vulnerability reporting **if enabled** for this repository. Otherwise ask the maintainer for a private reporting channel without posting exploit details or secrets publicly. Do not assume dependency audit results prove that the application is secure.

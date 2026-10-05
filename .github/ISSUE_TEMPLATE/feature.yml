@@ -1,0 +1,23 @@
+name: Feature proposal
+description: Propose a concrete agent workflow or capability.
+title: '[Feature]: '
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Agent task and problem
+      description: What should the agent accomplish, and what is missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed behavior and access
+      description: Expected inputs/outputs, read/write scope, credentials needed and coverage limits. Never include credential values.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Verification and alternatives
+      description: How should a maintainer validate it? Include material tradeoffs and existing workarounds.
