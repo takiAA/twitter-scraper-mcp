@@ -24,7 +24,8 @@
     "setup:twscrape": "node scripts/python.js setup",
     "auth:import": "node scripts/python.js import",
     "test:python": "node scripts/python.js test",
-    "test:session": "npm run build && node scripts/live-session-smoke.mjs"
+    "test:session": "npm run build && node scripts/live-session-smoke.mjs",
+    "auth:browser": "node scripts/auth-browser.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0",
@@ -36,6 +37,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@steipete/sweet-cookie": "0.4.4",
     "@types/node": "^22.13.9",
     "nock": "^14.0.17",
     "prettier": "^3.9.9",
