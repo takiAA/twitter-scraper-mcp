@@ -1,3 +1,12 @@
 .env
-/node_modules
-index.js
+.env.*
+!.env.example
+/node_modules/
+/dist/
+*.log
+cookies*.json
+.venv/
+.local/
+__pycache__/
+*.db
+*.db-*
