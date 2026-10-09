@@ -21,6 +21,8 @@ The TypeScript MCP service retains existing tool names, input keys and JSON text
 
 Parsed generators are closed with `aclosing`, IDs retain precision, duplicate IDs are suppressed and returned collections have a hard cap. Session calls are serialized by rejecting concurrent requests with `SERVER_BUSY`; there is no unbounded queue. Python cancellation releases generators when possible; a hard process kill can leave locks until their normal expiry. The service never clears upstream cooldowns automatically.
 
+`src/session-pagination.ts` keeps short-lived, bounded continuation snapshots in memory. Search/timeline workers read raw twscrape pages, then normalize only actual timeline entries in order; quoted posts remain context. The pager preserves overflow, suppresses repeated IDs across pages, binds tokens to inputs and shares the operation deadline across workers. No cursor, response or browser credential is persisted by the pager. Internal twscrape cursor/entry helpers are a version-specific dependency covered by isolated tests and explicit live checks.
+
 ## Provider contracts
 
 - Public single-post lookup requires no Python/session and has no automatic authenticated or paid fallback.

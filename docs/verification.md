@@ -1,4 +1,6 @@
-# Verification — 2026-10-05
+# Verification
+
+Unless otherwise dated, the checks below were performed on 2026-10-05.
 
 These observations describe this local environment and account session, not a platform-wide availability guarantee. Credentials and full authenticated responses are not included in this document. Live reports remain untracked in `.local`.
 
@@ -60,3 +62,15 @@ The default `test:session` runs core/public research reads; `npm run test:sessio
 ## Public endpoint limits
 
 Four successful oEmbed samples did not encounter a rate limit. This is a functional smoke test, not a sustained-load or quota test. No dependable numeric sustained-rate guarantee was established. Long-post truncation was observed directly. The endpoint is retained for lightweight public lookup, with explicit limitations and 429/error handling; it is not used as a search or timeline backend.
+
+## Browser comparison and session pagination — 2026-10-09
+
+X browser search was inspected with the user's authorization, using `polymarket -filter:retweets`. Top/Latest tabs, scroll-based loading and advanced language/date/engagement filters were visibly present. The first Top post matched the MCP result, but subsequent ordering differed; identical ranking, translations, location filtering and sidebar trends are not established. Quoted cards in the browser exposed a wrapper issue: nested quoted posts previously consumed independent search slots. Search/timeline pagination now normalizes actual timeline entries in order and retains quoted context separately.
+
+Through the real local stdio MCP and the existing twscrape session, with writes forced off:
+
+- Top search continued through five calls of ten posts each: **50 unique IDs**, no cross-page duplicates, no partial warnings. Calls took 5.281, 0.002, 4.671, 0.002 and 4.331 seconds. Fast calls served preserved overflow; later calls read new upstream pages. Some Top results were old, reinforcing the need for date filters.
+- The public `Polymarket` account timeline continued through three calls of twenty posts each: **60 unique IDs**, no cross-page duplicates, no partial warnings. Calls took 10.100, 4.687 and 8.663 seconds.
+- Session search with `language=zh`, reply/repost exclusion, `minLikes=100`, `sinceDate=2026-10-01`, `untilDate=2026-10-10` returned ten posts in 5.556 seconds. Every returned post met the date and available like-count threshold and had no reply/repost relationship ID. This is sample verification of X's filter behavior, not a guarantee for every operator or account.
+
+Sanitized local reports remain ignored under `.local`; no reusable cookies, account identity or raw authenticated responses are included here. These checks prove bounded browsing continuation for this session, not complete search coverage, sustained quotas or restored `getTrends` availability. Invalid/expired/cross-query cursors, buffer boundaries, deduplication, loop limits and network-failure recovery are covered separately by isolated tests. No live write was performed in this follow-up. The updated regression suite passed 63 Node tests and 22 Python tests; formatting and publication checks also passed.

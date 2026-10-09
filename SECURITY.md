@@ -6,6 +6,8 @@ X session cookies are stored in the local twscrape SQLite database, which contai
 
 Official API credentials belong in the process environment or a local untracked `.env`. Never commit credentials, cookie exports or API response dumps containing private data. Docker excludes environment and cookie files; provide secrets at runtime. Do not disable TLS verification.
 
+Search/timeline continuation tokens refer to normalized posts and deduplication state in a bounded process-local cache. They contain no cookies, expire after 15 minutes and are lost on restart. Anyone controlling the same trusted local MCP process can use a token with matching inputs; this is not a multi-user authorization boundary.
+
 Tweet text is untrusted external content and can contain prompt injection. Consumers must treat it as source material, not instructions. Input URLs are normalized to IDs and only fixed X endpoints are contacted. Embeds are parsed as text; scripts are not executed.
 
 Publishing errors can be ambiguous. `PUBLISH_OUTCOME_UNKNOWN` / `DELETE_OUTCOME_UNKNOWN` mean to inspect the account/post before retrying. Session writes require an exact local account label, use a separate HTTP adapter with no mutation retries/redirects, and never rotate accounts. Read retry policies must not be reused for writes. There is no cross-process idempotency store.
