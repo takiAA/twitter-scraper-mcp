@@ -75,6 +75,17 @@ def tweet(value):
         if d.get("inReplyToTweetId")
         else None,
         "quotedTweetId": str(d["quotedTweet"]["id"]) if d.get("quotedTweet") else None,
+        "quotedTweet": {
+            "id": str(d["quotedTweet"]["id"]),
+            "text": d["quotedTweet"]["rawContent"],
+            "url": d["quotedTweet"]["url"],
+            "author": {
+                "name": d["quotedTweet"]["user"]["displayname"],
+                "username": d["quotedTweet"]["user"]["username"],
+            },
+        }
+        if (d.get("quotedTweet") or {}).get("rawContent") is not None
+        else None,
         "retweetedTweetId": str(d["retweetedTweet"]["id"])
         if d.get("retweetedTweet")
         else None,
@@ -100,6 +111,80 @@ async def collect(gen, limit, convert=safe, predicate=None):
     return items
 
 
+def timeline_ids(entries):
+    """Keep timeline order; quoted posts are context, not separate search hits."""
+    ids = []
+    for entry in entries:
+        content = entry.get("content", {})
+        parts = [content] + [x.get("item", {}) for x in content.get("items", [])]
+        for part in parts:
+            result = (
+                part.get("itemContent", {}).get("tweet_results", {}).get("result", {})
+            )
+            result = result.get("tweet", result)
+            identity = result.get("rest_id") or result.get("legacy", {}).get("id_str")
+            if identity and str(identity) not in ids:
+                ids.append(str(identity))
+    return ids
+
+
+async def timeline_page(api, op, p, base):
+    from twscrape.models import parse_tweets
+
+    kv = {"cursor": p["cursor"]} if p.get("cursor") else {}
+    profile = None
+    if op == "searchTweetsPage":
+        query = p["query"] + (f" since_id:{p['sinceId']}" if p.get("sinceId") else "")
+        kv["product"] = "Latest" if p["sortOrder"] == "recency" else "Top"
+        gen = api.search_raw(query, limit=1, kv=kv)
+    else:
+        profile = p.get("user")
+        if not profile:
+            owner = await api.user_by_login(p["username"].lstrip("@"))
+            if owner is None:
+                raise ProviderError("NOT_FOUND", "User unavailable to this session.")
+            profile = user(owner)
+        method = (
+            api.user_tweets_raw
+            if p["excludeReplies"]
+            else api.user_tweets_and_replies_raw
+        )
+        gen = method(int(profile["id"]), limit=1, kv=kv)
+    async with aclosing(gen):
+        async for response in gen:
+            body = response.json()
+            cursor = api._get_cursor(body)
+            if cursor is not None and (not cursor or len(cursor) > 4096):
+                raise ProviderError("UPSTREAM_FORMAT", "Unsupported timeline cursor.")
+            parsed = {str(t.id): t for t in parse_tweets(body)}
+            items = []
+            for identity in timeline_ids(api._gql_entries(body)):
+                t = parsed.get(identity)
+                if t is None:
+                    raise ProviderError(
+                        "UPSTREAM_FORMAT", "Could not parse a timeline post."
+                    )
+                if op == "getUserTweetsPage" and (
+                    (p["excludeRetweets"] and t.retweetedTweet is not None)
+                    or (p["excludeReplies"] and t.inReplyToTweetId is not None)
+                    or (p.get("sinceId") and t.id <= int(p["sinceId"]))
+                ):
+                    continue
+                items.append(tweet(t))
+            return {
+                "tweets": items,
+                "cursor": cursor,
+                **base,
+                **({"user": profile} if profile else {}),
+            }
+    return {
+        "tweets": [],
+        "cursor": None,
+        **base,
+        **({"user": profile} if profile else {}),
+    }
+
+
 async def dispatch(api, op, p):
     limit = p.get("limit", p.get("maxResults", 10))
     base = {
@@ -107,6 +192,8 @@ async def dispatch(api, op, p):
         "fetchedAt": datetime.now(timezone.utc).isoformat(),
         "twscrapeVersion": version("twscrape"),
     }
+    if op in ("searchTweetsPage", "getUserTweetsPage"):
+        return await timeline_page(api, op, p, base)
     if p.get("nextToken"):
         raise ProviderError(
             "INVALID_INPUT",
@@ -227,17 +314,17 @@ async def dispatch(api, op, p):
 
 async def run(request):
     if request["operation"] in ("sendTweet", "deleteTweet"):
-        from session_writer import write, WriteError
+        from session_writer import WriteError, write
 
         try:
             return await write(request)
         except WriteError as e:
             raise ProviderError(e.code, e.message)
+    import twscrape.api as api_module
     from twscrape import API
     from twscrape.accounts_pool import NoAccountError
     from twscrape.logger import logger
-    import twscrape.api as api_module
-    from twscrape.queue_client import QueueClient, GqlFeaturesOutdatedError
+    from twscrape.queue_client import GqlFeaturesOutdatedError, QueueClient
 
     warnings = []
     logger.remove()
@@ -330,7 +417,7 @@ async def main(request):
                 "message": "Install the Python dependencies with npm run setup:twscrape.",
             },
         }
-    except Exception:
+    except Exception:  # noqa: BLE001 — redact unexpected provider/bridge errors
         return {
             "ok": False,
             "error": {
@@ -345,7 +432,7 @@ if __name__ == "__main__":
     try:
         request = json.loads(sys.stdin.buffer.read(131073))
         response = asyncio.run(main(request))
-    except Exception:
+    except Exception:  # noqa: BLE001 — redact unexpected provider/bridge errors
         response = {
             "ok": False,
             "error": {"code": "INVALID_INPUT", "message": "Invalid bridge request."},

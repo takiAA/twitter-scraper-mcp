@@ -6,6 +6,7 @@ import type { Config } from './config.js';
 import {
   searchInput,
   userTweetsInput,
+  sessionSearchQuery,
   type SearchOptions,
   type UserTweetsOptions,
 } from './inputs.js';
@@ -436,7 +437,27 @@ export function createTwitterService(
     async searchTweets(input: z.input<typeof searchInput>): Promise<Record<string, unknown>> {
       const options = validated(searchInput, input);
       try {
-        if (config.discoveryBackend === 'twscrape') return await scrape('searchTweets', options);
+        if (config.discoveryBackend === 'twscrape') {
+          const { filters, ...params } = options;
+          const query = sessionSearchQuery(options);
+          if (query.length > 4096)
+            throw new TwitterError(
+              'INVALID_INPUT',
+              'Search query with filters exceeds 4096 characters.',
+            );
+          const result = await scrape('searchTweets', { ...params, query });
+          return { ...result, query: options.query, effectiveQuery: query };
+        }
+        if (options.filters !== undefined)
+          throw new TwitterError(
+            'INVALID_INPUT',
+            'Browser-style filters require the twscrape session backend. In API mode, use API-supported operators in query.',
+          );
+        if (options.nextToken?.startsWith('session.'))
+          throw new TwitterError(
+            'INVALID_CURSOR',
+            'Session cursors cannot be used with the official API backend.',
+          );
         readApi ??= factory(config, false);
         return {
           ...normalizePage(await readApi.search(options)),
@@ -453,6 +474,11 @@ export function createTwitterService(
       try {
         if (config.discoveryBackend === 'twscrape')
           return await scrape('getUserTweets', { ...options, username });
+        if (options.nextToken?.startsWith('session.'))
+          throw new TwitterError(
+            'INVALID_CURSOR',
+            'Session cursors cannot be used with the official API backend.',
+          );
         readApi ??= factory(config, false);
         // Resolve each page explicitly; no stale username cache or automatic pagination.
         const rawUser = await readApi.user(username);

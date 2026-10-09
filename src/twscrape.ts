@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { z } from 'zod';
 import type { Config } from './config.js';
 import { TwitterError } from './errors.js';
+import { createSessionPager } from './session-pagination.js';
 
 const root = fileURLToPath(
   new URL(import.meta.url.endsWith('.ts') ? '../' : '../../', import.meta.url),
@@ -28,8 +29,9 @@ export function createScrapeTransport(config: Config): ScrapeTransport {
   );
   const python = config.pythonPath || (existsSync(venv) ? venv : 'python3');
   const db = resolve(root, config.accountsDb || '.local/accounts.db');
-  return {
-    async read(operation, params) {
+  const worker = {
+    async read(operation: string, params: Record<string, unknown>, remainingMs?: number) {
+      const timeoutMs = Math.min(config.timeoutMs, remainingMs ?? config.timeoutMs);
       if (closed) throw new TwitterError('SERVER_CLOSED', 'The server is shutting down.');
       if (current)
         throw new TwitterError(
@@ -75,7 +77,7 @@ export function createScrapeTransport(config: Config): ScrapeTransport {
             'The twscrape worker exceeded its deadline. Account locks may remain until expiry.',
           );
           child.kill('SIGKILL');
-        }, config.timeoutMs + 3000);
+        }, timeoutMs + 3000);
         child.stdin.on('error', () => {});
         child.stdout.on('data', (chunk: Buffer) => {
           bytes += chunk.length;
@@ -120,7 +122,7 @@ export function createScrapeTransport(config: Config): ScrapeTransport {
             operation,
             params,
             db,
-            timeoutMs: config.timeoutMs,
+            timeoutMs,
             writeEnabled: config.enableWrite,
             writeAccount: config.writeAccount,
             ...(config.proxyUrl ? { proxy: config.proxyUrl } : {}),
@@ -142,6 +144,33 @@ export function createScrapeTransport(config: Config): ScrapeTransport {
         }
         clearTimeout(force);
       }
+    },
+  };
+  const pager = createSessionPager(
+    (op, params, remaining) => worker.read(op, params, remaining),
+    config.timeoutMs,
+  );
+  let busy = false;
+  return {
+    async read(operation, params) {
+      if (closed) throw new TwitterError('SERVER_CLOSED', 'The server is shutting down.');
+      if (busy)
+        throw new TwitterError(
+          'SERVER_BUSY',
+          'Another session operation is running. Wait for that operation to finish.',
+        );
+      busy = true;
+      try {
+        if (operation === 'searchTweets' || operation === 'getUserTweets')
+          return await pager.read(operation, params);
+        return await worker.read(operation, params);
+      } finally {
+        busy = false;
+      }
+    },
+    async close() {
+      pager.clear();
+      await worker.close();
     },
   };
 }
