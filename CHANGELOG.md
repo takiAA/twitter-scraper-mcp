@@ -23,6 +23,10 @@
 
 ### Added
 
+- Session search/timeline continuation with opaque process-local cursors, overflow retention, cross-page deduplication, 15-minute expiry and bounded memory/request budgets.
+- Optional browser-style language, account, media, date and engagement search filters; original and effective query metadata.
+- Timeline-entry ordering and quoted-post context without counting quote-only posts as separate search results.
+
 - Explicit host `auth:browser` import with pinned Sweet Cookie, selected browser/profile, x.com cookie filtering and private stdin transport.
 - Extraction-only checks, extension JSON fallback, explicit label replacement and preserved cooldown locks; no extraction on MCP startup.
 - Explicit named-cookie-session plain-text publishing and deletion, independent of read providers; API remains the default write provider.

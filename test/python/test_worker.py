@@ -76,6 +76,145 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["coverage"], "bounded")
         self.assertIsNone(result["nextToken"])
 
+    async def test_raw_search_page_keeps_timeline_order_and_excludes_quote_only_hits(
+        self,
+    ):
+        calls, closed = [], []
+        entries = [
+            {
+                "content": {
+                    "itemContent": {"tweet_results": {"result": {"rest_id": "3"}}}
+                }
+            },
+            {
+                "content": {
+                    "items": [
+                        {
+                            "item": {
+                                "itemContent": {
+                                    "tweet_results": {
+                                        "result": {"tweet": {"rest_id": "1"}}
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            },
+        ]
+        body = {"entries": entries, "cursor": "bottom"}
+
+        async def raw(q, **kw):
+            calls.append((q, kw))
+            try:
+                yield SimpleNamespace(json=lambda: body)
+                self.fail("Only one raw page should be consumed")
+            finally:
+                closed.append(True)
+
+        api = SimpleNamespace(
+            search_raw=raw,
+            _get_cursor=lambda b: b["cursor"],
+            _gql_entries=lambda b: b["entries"],
+        )
+        with (
+            patch(
+                "twscrape.models.parse_tweets",
+                lambda _: [SimpleNamespace(id=n) for n in [1, 2, 3]],
+            ),
+            patch.object(worker, "tweet", lambda t: {"id": str(t.id)}),
+        ):
+            result = await worker.dispatch(
+                api,
+                "searchTweetsPage",
+                {"query": "polymarket", "sortOrder": "relevancy", "cursor": "previous"},
+            )
+        self.assertEqual([t["id"] for t in result["tweets"]], ["3", "1"])
+        self.assertEqual(result["cursor"], "bottom")
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "polymarket",
+                    {"limit": 1, "kv": {"cursor": "previous", "product": "Top"}},
+                )
+            ],
+        )
+        self.assertEqual(closed, [True])
+
+    async def test_raw_timeline_page_reuses_profile_and_applies_filters(self):
+        rows = [
+            SimpleNamespace(
+                id=n,
+                retweetedTweet=None if n != 4 else {},
+                inReplyToTweetId=None if n != 3 else 1,
+            )
+            for n in [1, 2, 3, 4]
+        ]
+        body = {
+            "entries": [
+                {
+                    "content": {
+                        "itemContent": {
+                            "tweet_results": {"result": {"rest_id": str(n)}}
+                        }
+                    }
+                }
+                for n in [1, 2, 3, 4]
+            ]
+        }
+
+        async def raw(uid, **kw):
+            self.assertEqual(uid, 7)
+            yield SimpleNamespace(json=lambda: body)
+
+        api = SimpleNamespace(
+            user_tweets_raw=raw,
+            _get_cursor=lambda _: None,
+            _gql_entries=lambda b: b["entries"],
+        )
+        with (
+            patch("twscrape.models.parse_tweets", lambda _: rows),
+            patch.object(worker, "tweet", lambda t: {"id": str(t.id)}),
+        ):
+            result = await worker.dispatch(
+                api,
+                "getUserTweetsPage",
+                {
+                    "username": "test",
+                    "user": {"id": "7", "username": "test"},
+                    "excludeReplies": True,
+                    "excludeRetweets": True,
+                    "sinceId": "1",
+                },
+            )
+        self.assertEqual(result["tweets"], [{"id": "2"}])
+        self.assertEqual(result["user"]["id"], "7")
+
+    async def test_timeline_missing_parsed_root_does_not_silently_return_empty(self):
+        async def raw(*args, **kw):
+            yield SimpleNamespace(json=dict)
+
+        api = SimpleNamespace(
+            search_raw=raw,
+            _get_cursor=lambda _: None,
+            _gql_entries=lambda _: [
+                {
+                    "content": {
+                        "itemContent": {"tweet_results": {"result": {"rest_id": "1"}}}
+                    }
+                }
+            ],
+        )
+        with (
+            patch("twscrape.models.parse_tweets", lambda _: []),
+            self.assertRaises(worker.ProviderError) as e,
+        ):
+            await worker.dispatch(
+                api, "searchTweetsPage", {"query": "x", "sortOrder": "recency"}
+            )
+        self.assertEqual(e.exception.code, "UPSTREAM_FORMAT")
+
     async def test_reject_api_cursor_and_unknown_operation(self):
         for op, params in [("searchTweets", {"nextToken": "api-cursor"}), ("post", {})]:
             with self.assertRaises(worker.ProviderError) as e:
@@ -174,6 +313,9 @@ class WorkerTests(unittest.IsolatedAsyncioTestCase):
 
         methods = [
             "search",
+            "search_raw",
+            "user_tweets_raw",
+            "user_tweets_and_replies_raw",
             "search_user",
             "search_trend",
             "tweet_details",

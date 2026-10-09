@@ -11,7 +11,7 @@ The 1.1.0 restart provides local stdio MCP tools, bounded twscrape reads, option
 ## Next: reliable research workflows
 
 - Investigate `getUserById` and `getTrends` upstream failures with sanitized fixtures and version-specific compatibility checks.
-- Design session pagination and durable incremental checkpoints with explicit cursor/coverage contracts. A filtered bounded sample must not be advertised as a complete sync.
+- Evaluate durable incremental checkpoints beyond the current process-local search/timeline pagination. A filtered browsing sequence must not be advertised as a complete sync.
 - Add local session diagnostics that expose account labels and actionable states, never reusable cookie values.
 - Expand real thread/timeline verification while keeping private and write operations outside ordinary CI.
 
