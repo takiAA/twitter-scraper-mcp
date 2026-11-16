@@ -11,5 +11,5 @@ loguru==0.7.3
 py-machineid==1.0.0
 PyOTP==2.10.0
 soupsieve==2.10
-twscrape==0.20.1
+twscrape==0.21.0
 typing_extensions==4.16.0
