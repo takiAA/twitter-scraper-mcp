@@ -7,7 +7,7 @@ h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
 idna==3.20
-loguru==0.7.3
+loguru==0.8.0
 py-machineid==1.0.0
 PyOTP==2.10.0
 soupsieve==2.10
