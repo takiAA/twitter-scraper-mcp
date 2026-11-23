@@ -39,12 +39,12 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@steipete/sweet-cookie": "0.4.4",
-    "@types/node": "^22.13.9",
-    "nock": "^14.0.17",
-    "prettier": "^3.9.9",
+    "@steipete/sweet-cookie": "0.4.5",
+    "@types/node": "^26.6.6",
+    "nock": "^15.0.6",
+    "prettier": "^3.10.1",
     "tsx": "^4.20.0",
-    "typescript": "^5.8.2"
+    "typescript": "^7.0.2"
   },
   "repository": {
     "type": "git",
